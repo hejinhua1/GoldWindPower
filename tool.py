@@ -119,11 +119,11 @@ def SMAPE(ypred, ytrue):
     return np.mean(np.abs((ytrue - ypred) \
         / mean_y))
 
-def MAPE(ypred, ytrue):
-    ytrue = np.array(ytrue).ravel() + 1e-4
+def MAPE(ypred, ytrue, ymax):
+    ytrue = np.array(ytrue).ravel()
     ypred = np.array(ypred).ravel()
     return np.mean(np.abs((ytrue - ypred) \
-        / ytrue))
+        / ymax))
 
 class Data_normalizer(AtmosphericData):
     def __init__(self):
