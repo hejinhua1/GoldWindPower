@@ -7,11 +7,34 @@ from datetime import datetime
 
 
 class WindDataset(Dataset):
-    def __init__(self, flag='train', TyphoonMode=False, Norm_type='std', M=9, N=9):
-        if Norm_type == 'std':
-            directory_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/data/minmax_data.npy"
+    def __init__(self, flag='train', station=1, Norm_type='std', M=9, N=9):
+        self.station = station
+        if station == 0:
+            if Norm_type == 'std':
+                directory_path = "./data/std_data_station0.npy"
+            else:
+                directory_path = "./data/minmax_data_station0.npy"
+        elif station == 1:
+            if Norm_type == 'std':
+                directory_path = "./data/std_data_station1.npy"
+            else:
+                directory_path = "./data/minmax_data_station1.npy"
+        elif station == 2:
+            if Norm_type == 'std':
+                directory_path = "./data/std_data_station2.npy"
+            else:
+                directory_path = "./data/minmax_data_station2.npy"
+        elif station == 3:
+            if Norm_type == 'std':
+                directory_path = "./data/std_data_station3.npy"
+            else:
+                directory_path = "./data/minmax_data_station3.npy"
         else:
-            directory_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/data/std_data.npy"
+            if Norm_type == 'std':
+                directory_path = "./data/std_data_station1.npy"
+            else:
+                directory_path = "./data/minmax_data_station1.npy"
+
         self.data = []
 
         # 遍历目录下的所有文件
@@ -28,9 +51,10 @@ class WindDataset(Dataset):
         data = data_all[base_index:base_index+index_length, :]
 
         for i in range(data.shape[0] - M - N + 1):
-            input_data = data[i:i + M, :]
+            history_input_data = data[i:i + M, :]
+            forecast_input_data = data[i + M:i + M + N, :6]
             output_data = data[i + M:i + M + N, :]
-            self.data.append((input_data, output_data))
+            self.data.append((history_input_data, forecast_input_data, output_data))
         self.M = M
         self.N = N
         self.Norm_type = Norm_type
@@ -40,8 +64,8 @@ class WindDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        input_data, output_data = self.data[idx]
-        return input_data, output_data
+        history_input_data, forecast_input_data, output_data = self.data[idx]
+        return history_input_data, forecast_input_data, output_data
 
 
 

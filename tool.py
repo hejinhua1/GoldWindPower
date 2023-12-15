@@ -126,8 +126,8 @@ def MAPE(ypred, ytrue, ymax):
         / ymax))
 
 class Data_normalizer(AtmosphericData):
-    def __init__(self):
-        super(Data_normalizer, self).__init__()
+    def __init__(self, station=1):
+        super(Data_normalizer, self).__init__(station=station)
 
     def normalize_std(self, data):
         '''
@@ -226,3 +226,10 @@ class Weighted_loss(nn.Module):
         loss = (self.loss_weight[0] * u_loss + self.loss_weight[1] * v_loss)/(self.loss_weight[0] + self.loss_weight[1])
         return loss
 
+if __name__ == '__main__':
+    # Create Data_normalizer instance with station=2
+    data_normalizer = Data_normalizer(station=3)
+
+    # Access data and dictionaries as needed
+    print(data_normalizer.data_max)
+    print('finished')

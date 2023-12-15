@@ -92,37 +92,42 @@ class TemporalPatternAttention(nn.Module):
 
 
 if __name__ == "__main__":
-    random.seed(2)
+    seed = 2023
+    random.seed(seed)
+    torch.manual_seed(seed)
+    station = 3
+    epoch_size, batch_size = 50, 6400
+    checkpoint_interval = 1
+    Norm_type = 'maxmin'  # 'maxmin' or 'std'
+    use_gpu = False
+    gpu_id = 0  # 选择要使用的GPU的ID
     Resume = False
     if Resume:
         resume_epoch = 20
     else:
         resume_epoch = 0
     # 迭代次数和检查点保存间隔
-    gpu_id = 0  # 选择要使用的GPU的ID
     M = 24  # given the M time steps before time t
     N = 24  # predicts the N time steps after time t
-    epoch_size, batch_size = 50, 200
-    checkpoint_interval = 5
-    checkpoint_prefix = 'TPALSTM_h{}_'.format(N)
-    log_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/logs/TPALSTM_h{}_log".format(N)
-    Norm_type = 'maxmin'  # 'maxmin' or 'std'
+    checkpoint_prefix = 'TPALSTM_station{}_'.format(station)
+    log_path = "./logs/TPALSTM_station{}_log".format(station)
     # 设置检查点路径和文件名前缀
-    checkpoint_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/checkpoints/"
+    checkpoint_path = "./checkpoints/"
     # Get the current date and time
     current_datetime = datetime.now()
     # Format the current date and time to display only hours and minutes
-    formatted_datetime = current_datetime.strftime('%Y-%m-%d %H')
+    formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
 
     # 设置GPU
-    if torch.cuda.is_available():
+    if use_gpu:
         device = torch.device('cuda:{}'.format(gpu_id))
+        torch.cuda.manual_seed(seed)
     else:
         device = torch.device('cpu')
 
     # 模型定义和训练
-    model = TPALSTM(input_size=8, output_horizon=24, hidden_size=96, obs_len=24, n_layers=8).to(device)
-    opt = optim.Adam(model.parameters(), lr=5e-4)
+    model = TPALSTM(input_size=8+6, output_horizon=24, hidden_size=24, obs_len=24, n_layers=8).to(device)
+    opt = optim.Adam(model.parameters(), lr=1e-3)
     if Resume:
         # 加载之前保存的模型参数和优化器状态
         checkpoint_name = checkpoint_prefix + str(resume_epoch) + '.pt'
@@ -136,11 +141,11 @@ if __name__ == "__main__":
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epoch_size)
     criterion = nn.L1Loss()
     weighted_loss = Weighted_loss()
-    normalizer = Data_normalizer()
+    normalizer = Data_normalizer(station=station)
 
-    trainset = WindDataset(flag='train', Norm_type=Norm_type, M=M, N=N)
+    trainset = WindDataset(flag='train', station=station, Norm_type=Norm_type, M=M, N=N)
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
-    valiset = WindDataset(flag='vali', Norm_type=Norm_type, M=M, N=N)
+    valiset = WindDataset(flag='vali', station=station, Norm_type=Norm_type, M=M, N=N)
     valiloader = DataLoader(valiset, batch_size=batch_size, shuffle=False)
 
     # 训练循环
@@ -154,8 +159,9 @@ if __name__ == "__main__":
         test_rmse, test_mae, test_mape = 0.0, 0.0, 0.0
         model.train()
         loop = tqdm((trainloader), total=len(trainloader))
-        for (x, y) in loop: # x: torch.Size([B, L, C]); y: torch.Size([B, L, C])
+        for (hx, fx, y) in loop: # # hx: torch.Size([B, L, C]); hx: torch.Size([B, L-2, C]); y: torch.Size([B, L, C])
             ########################################################
+            x = torch.cat([hx, fx], dim=2)
             x = x.to(torch.float32)
             y = y.to(torch.float32)
             x = x.to(device)
@@ -176,8 +182,9 @@ if __name__ == "__main__":
         model.eval()
         with torch.no_grad():
             loop = tqdm((valiloader), total=len(valiloader))
-            for (x, y) in loop:
+            for (hx, fx, y) in loop:  # hx: torch.Size([B, L, C]); hx: torch.Size([B, L-2, C]); y: torch.Size([B, L, C])
                 ########################################################
+                x = torch.cat([hx, fx], dim=2)
                 x = x.to(torch.float32)
                 y = y.to(torch.float32)
                 x = x.to(device)
@@ -185,7 +192,7 @@ if __name__ == "__main__":
                 y_hat = model(x)
                 ########################################################
                 y_raw, y_hat = y.numpy(), y_hat.detach().cpu().numpy()
-                y_raw, u_hat = normalizer.inverse_target(y_raw, y_hat, target='p', Norm_type=Norm_type)
+                y_raw, y_hat = normalizer.inverse_target(y_raw, y_hat, target='p', Norm_type=Norm_type)
                 loss = criterion(torch.from_numpy(y_raw), torch.from_numpy(y_hat))
                 loss_num = loss.numpy()
                 loop.set_description(f'Test Epoch: [{epoch}/{epoch_size}] loss: [{loss_num}]')

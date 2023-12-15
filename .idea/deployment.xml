@@ -5,7 +5,7 @@
       <paths name="hjh@166.111.61.108:22 password">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/home/hjh/GoldWindPower" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
