@@ -74,31 +74,36 @@ if __name__ == "__main__":
     # x = torch.randn(32, 24, 14)
     # model = TransformerModel(input_size=14, output_size=24, d_model=16, seq_len=24)
     # out = model(x)
-    random.seed(2023)
+    seed = 2023
+    random.seed(seed)
+    torch.manual_seed(seed)
+    station = 1
+    epoch_size, batch_size = 50, 1000
+    checkpoint_interval = 1
+    Norm_type = 'maxmin'  # 'maxmin' or 'std'
+    use_gpu = True
+    gpu_id = 0  # 选择要使用的GPU的ID
     Resume = False
     if Resume:
         resume_epoch = 20
     else:
         resume_epoch = 0
     # 迭代次数和检查点保存间隔
-    gpu_id = 0  # 选择要使用的GPU的ID
     M = 24  # given the M time steps before time t
     N = 24  # predicts the N time steps after time t
-    epoch_size, batch_size = 50, 500
-    checkpoint_interval = 1
-    checkpoint_prefix = 'Transformer_h{}_'.format(N)
-    log_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/logs/Transformer_h{}_log".format(N)
-    Norm_type = 'maxmin'  # 'maxmin' or 'std'
+    checkpoint_prefix = 'Transformer_station{}_'.format(station)
+    log_path = "./logs/Transformer_station{}_log".format(station)
     # 设置检查点路径和文件名前缀
-    checkpoint_path = "E:/HJHCloud/Seafile/startup/GoldWindPower/checkpoints/"
+    checkpoint_path = "./checkpoints/"
     # Get the current date and time
     current_datetime = datetime.now()
     # Format the current date and time to display only hours and minutes
     formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
 
     # 设置GPU
-    if torch.cuda.is_available():
+    if use_gpu:
         device = torch.device('cuda:{}'.format(gpu_id))
+        torch.cuda.manual_seed(seed)
     else:
         device = torch.device('cpu')
 
@@ -118,11 +123,11 @@ if __name__ == "__main__":
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epoch_size)
     criterion = nn.L1Loss()
     weighted_loss = Weighted_loss()
-    normalizer = Data_normalizer()
+    normalizer = Data_normalizer(station=station)
 
-    trainset = WindDataset(flag='train', Norm_type=Norm_type, M=M, N=N)
+    trainset = WindDataset(flag='train', station=station, Norm_type=Norm_type, M=M, N=N)
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
-    valiset = WindDataset(flag='vali', Norm_type=Norm_type, M=M, N=N)
+    valiset = WindDataset(flag='vali', station=station, Norm_type=Norm_type, M=M, N=N)
     valiloader = DataLoader(valiset, batch_size=batch_size, shuffle=False)
 
     # 训练循环
@@ -165,7 +170,7 @@ if __name__ == "__main__":
                 x = x.to(torch.float32)
                 y = y.to(torch.float32)
                 x = x.to(device)
-                y = y[:, :, -1].to(device)
+                y = y[:, :, -1]
                 y_hat = model(x)
                 ########################################################
                 y_raw, y_hat = y.numpy(), y_hat.detach().cpu().numpy()

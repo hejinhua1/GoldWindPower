@@ -39,7 +39,7 @@ class WindDataset(Dataset):
 
         # 遍历目录下的所有文件
         year_start = datetime(2021, 1, 1)
-        self.yearSet_dict = {'train': ('2021-01-01', '2022-08-31'),
+        self.yearSet_dict = {'train': ('2021-01-01', '2022-09-01'),
                              'vali': ('2022-09-01', '2022-12-31'),
                              'test': ('2022-09-01', '2022-12-31')}
         start_time = datetime.strptime(self.yearSet_dict[flag][0], '%Y-%m-%d')
@@ -52,6 +52,9 @@ class WindDataset(Dataset):
 
         for i in range(data.shape[0] - M - N + 1):
             history_input_data = data[i:i + M, :]
+            #站在当前时刻，预测未来16-24个时刻的风速
+            #但是这里输入了未来16个时刻的实际风速和实际功率，要把这16个时刻的风速和功率置零
+            # history_input_data[-16:, 6:] = 0
             forecast_input_data = data[i + M:i + M + N, :6]
             output_data = data[i + M:i + M + N, :]
             self.data.append((history_input_data, forecast_input_data, output_data))
@@ -73,14 +76,14 @@ class WindDataset(Dataset):
 
 
 if __name__ == '__main__':
-    batch_size = 200
+    batch_size = 6400
     # 获取当前时间
     start_time = datetime.now()
     # 打印当前时间
     print("Current time:", start_time)
 
 
-    wind_dataset = WindDataset(flag='train', Norm_type='maxmin', M=4, N=24)
+    wind_dataset = WindDataset(flag='train', Norm_type='maxmin', M=24, N=24)
     dataloader = DataLoader(wind_dataset, batch_size=batch_size, shuffle=True)
 
     # 获取当前时间
@@ -90,8 +93,9 @@ if __name__ == '__main__':
     # 打印当前时间
     print("Current time:", delt_time)
     i = 0
-    for x,y in dataloader:
-        print(x.shape)
+    for (hx, fx, y) in dataloader:
+        print(hx.shape)
+        print(fx.shape)
         print(y.shape)
         i = i+1
         print(i)

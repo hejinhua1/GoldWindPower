@@ -92,10 +92,10 @@ class TemporalPatternAttention(nn.Module):
 
 
 if __name__ == "__main__":
-    seed = 2023
+    seed = 3
     random.seed(seed)
     torch.manual_seed(seed)
-    station = 3
+    station = 0
     epoch_size, batch_size = 50, 6400
     checkpoint_interval = 1
     Norm_type = 'maxmin'  # 'maxmin' or 'std'
@@ -188,7 +188,7 @@ if __name__ == "__main__":
                 x = x.to(torch.float32)
                 y = y.to(torch.float32)
                 x = x.to(device)
-                y = y[:, :, -1].to(device)
+                y = y[:, :, -1]
                 y_hat = model(x)
                 ########################################################
                 y_raw, y_hat = y.numpy(), y_hat.detach().cpu().numpy()
